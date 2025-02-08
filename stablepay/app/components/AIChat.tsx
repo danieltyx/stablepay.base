@@ -1,98 +1,59 @@
+// /app/components/AIChat.tsx
 'use client';
-
 import { useState, useEffect } from 'react';
 
-// Import necessary libraries
-import {
-  AgentKit,
-  CdpWalletProvider,
-  walletActionProvider,
-  erc20ActionProvider,
-} from "@coinbase/agentkit";
-import { getLangChainTools } from "@coinbase/agentkit-langchain";
-import { HumanMessage } from "@langchain/core/messages";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { ChatOpenAI } from "@langchain/openai";
-import * as fs from "fs";
-
-const WALLET_DATA_FILE = "wallet_data.txt";
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export default function AIChat() {
-  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
-    // Initialize with welcome message
     setMessages([{
       role: 'assistant',
       content: 'Hello! I can help you with payments, analytics, and NFT rewards. What would you like to do?'
     }]);
   }, []);
 
-  // Function to initialize the agent
-  async function initializeAgent() {
-    const llm = new ChatOpenAI({
-      model: "gpt-4o-mini",
-    });
-
-    let walletDataStr = fs.existsSync(WALLET_DATA_FILE)
-      ? fs.readFileSync(WALLET_DATA_FILE, "utf8")
-      : null;
-
-    const config = {
-      apiKeyName: process.env.CDP_API_KEY_NAME,
-      apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      cdpWalletData: walletDataStr || undefined,
-      networkId: process.env.NETWORK_ID || "base-sepolia",
-    };
-
-    const walletProvider = await CdpWalletProvider.configureWithWallet(config);
-
-    const agentkit = await AgentKit.from({
-      walletProvider,
-      actionProviders: [walletActionProvider(), erc20ActionProvider()],
-    });
-
-    const tools = await getLangChainTools(agentkit);
-
-    const agent = createReactAgent({
-      llm,
-      tools,
-      messageModifier: `
-        You are a helpful assistant specializing in blockchain interactions. Focus on providing clear, actionable advice.`,
-    });
-
-    fs.writeFileSync(WALLET_DATA_FILE, JSON.stringify(await walletProvider.exportWallet()));
-
-    return agent;
-  }
-
-  // Chat function that interacts with the initialized agent
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    // Add user message
-    const newMessages = [...messages, { role: 'user', content: input }];
-    setMessages(newMessages);
+    const userMessage = { role: 'user' as const, content: input };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
 
     try {
-      // Initialize the agent and get response
-      const agent = await initializeAgent();
-      const response = await agent.invoke({ messages: [new HumanMessage(input)] });
-      
-      // Add assistant's response to messages
-      setMessages([...newMessages, { role: 'assistant', content: String(response.messages[0].content) }]);
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const data = await response.json();
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.response
+      }]);
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.'
-        }
-      ]);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -120,12 +81,16 @@ export default function AIChat() {
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 p-2 rounded-md border border-border bg-background"
             placeholder="Ask about payments, analytics, or NFT rewards..."
+            disabled={isLoading}
           />
           <button 
             type="submit"
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground"
+            className={`px-4 py-2 rounded-md bg-primary text-primary-foreground ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={isLoading}
           >
-            Send
+            {isLoading ? 'Sending...' : 'Send'}
           </button>
         </div>
       </form>
