@@ -1,13 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PaymentAgent } from '../lib/ai/agent';
+
+// Import necessary libraries
+import {
+  AgentKit,
+  CdpWalletProvider,
+  walletActionProvider,
+  erc20ActionProvider,
+} from "@coinbase/agentkit";
+import { getLangChainTools } from "@coinbase/agentkit-langchain";
+import { HumanMessage } from "@langchain/core/messages";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { ChatOpenAI } from "@langchain/openai";
+import * as fs from "fs";
+
+const WALLET_DATA_FILE = "wallet_data.txt";
 
 export default function AIChat() {
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
   const [input, setInput] = useState('');
-  const [agent] = useState(() => new PaymentAgent());
-
+  
   useEffect(() => {
     // Initialize with welcome message
     setMessages([{
@@ -16,6 +29,45 @@ export default function AIChat() {
     }]);
   }, []);
 
+  // Function to initialize the agent
+  async function initializeAgent() {
+    const llm = new ChatOpenAI({
+      model: "gpt-4o-mini",
+    });
+
+    let walletDataStr = fs.existsSync(WALLET_DATA_FILE)
+      ? fs.readFileSync(WALLET_DATA_FILE, "utf8")
+      : null;
+
+    const config = {
+      apiKeyName: process.env.CDP_API_KEY_NAME,
+      apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      cdpWalletData: walletDataStr || undefined,
+      networkId: process.env.NETWORK_ID || "base-sepolia",
+    };
+
+    const walletProvider = await CdpWalletProvider.configureWithWallet(config);
+
+    const agentkit = await AgentKit.from({
+      walletProvider,
+      actionProviders: [walletActionProvider(), erc20ActionProvider()],
+    });
+
+    const tools = await getLangChainTools(agentkit);
+
+    const agent = createReactAgent({
+      llm,
+      tools,
+      messageModifier: `
+        You are a helpful assistant specializing in blockchain interactions. Focus on providing clear, actionable advice.`,
+    });
+
+    fs.writeFileSync(WALLET_DATA_FILE, JSON.stringify(await walletProvider.exportWallet()));
+
+    return agent;
+  }
+
+  // Chat function that interacts with the initialized agent
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -26,9 +78,12 @@ export default function AIChat() {
     setInput('');
 
     try {
-      // Get AI response
-      const response = await agent.chat(input);
-      setMessages([...newMessages, response]);
+      // Initialize the agent and get response
+      const agent = await initializeAgent();
+      const response = await agent.invoke({ messages: [new HumanMessage(input)] });
+      
+      // Add assistant's response to messages
+      setMessages([...newMessages, { role: 'assistant', content: String(response.messages[0].content) }]);
     } catch (error) {
       console.error('Chat error:', error);
       setMessages([
@@ -76,4 +131,4 @@ export default function AIChat() {
       </form>
     </div>
   );
-} 
+}
