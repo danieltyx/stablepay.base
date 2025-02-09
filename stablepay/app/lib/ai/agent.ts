@@ -11,12 +11,19 @@ export type Message = {
 
 export class PaymentAgent {
   private messages: Message[] = [];
+  private address: string;
 
   constructor() {
+    this.address = ''; // Initialize empty
     this.messages.push({
       role: 'assistant',
       content: 'Hello! I can help you with payments, analytics, and rewards. What would you like to do?'
     });
+  }
+
+  // Add method to set address
+  setAddress(address: string) {
+    this.address = address;
   }
 
   async chat(userInput: string): Promise<Message> {
@@ -89,6 +96,16 @@ export class PaymentAgent {
         return await this.generatePaymentQR(args.amount, args.discount);
       case 'getAnalytics':
         return await this.getAnalytics(args.timeframe);
+      case 'onrampUSDC':
+        return await this.onrampUSDC(args.amount);
+      case 'deploySmartContract':
+        return await this.deploySmartContract(args.contractType);
+      case 'createMPCWallet':
+        return await this.createMPCWallet();
+      case 'automatePayments':
+        return await this.automatePayments(args.schedule, args.amount);
+      case 'createLoyaltyProgram':
+        return await this.createLoyaltyProgram();
       default:
         throw new Error(`Unknown function: ${functionCall.name}`);
     }
@@ -110,5 +127,92 @@ export class PaymentAgent {
       volume: 0,
       uniqueCustomers: 0
     };
+  }
+
+  async onrampUSDC(amount: number) {
+    try {
+      const session = await createOnrampSession(amount, this.address);
+      return {
+        onrampUrl: session.redirectUrl,
+        amount,
+        currency: 'USDC',
+        sessionId: session.id
+      };
+    } catch (error) {
+      console.error('Onramp error:', error);
+      throw error;
+    }
+  }
+
+  async deploySmartContract(contractType: 'loyalty' | 'rewards' | 'custom') {
+    try {
+      const contract = await deployContract(contractType, {
+        name: `${contractType.toUpperCase()} Contract`,
+        symbol: contractType === 'loyalty' ? 'LOYAL' : 'RWRD',
+      });
+      return {
+        contractAddress: contract.address,
+        type: contractType,
+        network: 'base',
+        txHash: contract.deploymentTx
+      };
+    } catch (error) {
+      console.error('Contract deployment error:', error);
+      throw error;
+    }
+  }
+
+  async createMPCWallet() {
+    try {
+      const wallet = await createWallet(Date.now().toString());
+      return {
+        walletAddress: wallet.address,
+        type: 'mpc',
+        capabilities: ['transactions', 'automation'],
+        walletId: wallet.id
+      };
+    } catch (error) {
+      console.error('MPC wallet creation error:', error);
+      throw error;
+    }
+  }
+
+  async automatePayments(schedule: 'daily' | 'weekly' | 'monthly', amount: number) {
+    try {
+      const wallet = await this.createMPCWallet();
+      const payment = await schedulePayment(
+        wallet.walletId,
+        schedule,
+        amount,
+        this.address
+      );
+      return {
+        schedule,
+        amount,
+        status: 'scheduled',
+        paymentId: payment.id,
+        nextPayment: payment.nextExecutionTime
+      };
+    } catch (error) {
+      console.error('Payment automation error:', error);
+      throw error;
+    }
+  }
+
+  async createLoyaltyProgram() {
+    try {
+      const program = await setupLoyaltyProgram({
+        spendMultiplier: 0.05,
+        minimumSpend: 100
+      });
+      return {
+        programId: program.programId,
+        rewardRules: program.rewardRules,
+        status: 'active'
+      };
+    } catch (error) {
+      console.error('Loyalty program creation error:', error);
+      throw error;
+    }
   }
 } 

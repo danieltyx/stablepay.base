@@ -6,6 +6,7 @@ import ConnectWallet from './components/ConnectWallet';
 import PaymentQR from './components/PaymentQR';
 import WalletActivity from './components/WalletActivity';
 import Analytics from './components/Analytics';
+import OnrampButton from './components/OnrampButton';
 import { useState, useEffect } from 'react';
 import { getStats } from './lib/stats';
 
@@ -104,6 +105,17 @@ export default function Home() {
                 Dollar Savings
               </h3>
               <p className="text-2xl font-semibold mt-2">{stats.savings}</p>
+            </div>
+          </div>
+
+          {/* Onramp Section */}
+          <div className="p-6 rounded-lg bg-muted">
+            <div className="max-w-md mx-auto text-center">
+              <h2 className="text-lg font-semibold mb-2">Get Started with USDC</h2>
+              <p className="text-muted-foreground mb-4">
+                Buy USDC instantly with your credit card to start accepting payments
+              </p>
+              <OnrampButton address={connectedAddress} />
             </div>
           </div>
 
