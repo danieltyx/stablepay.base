@@ -1,6 +1,6 @@
 // /app/components/AIChat.tsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -11,13 +11,19 @@ export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMessages([{
       role: 'assistant',
-      content: 'Hello! I can help you with payments, analytics, and rewards. What would you like to do?'
+      content: 'Hello! I can help you with payments, analytics, and rewards using the Coinbase Developer Platform. What would you like to do?'
     }]);
   }, []);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +44,7 @@ export default function AIChat() {
       });
 
       if (!response.ok) {
-        throw new Error('API request failed');
+        throw new Error(`API request failed: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -50,7 +56,7 @@ export default function AIChat() {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
+        content: 'Sorry, I encountered an error. Please try again later.'
       }]);
     } finally {
       setIsLoading(false);
@@ -58,28 +64,29 @@ export default function AIChat() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto space-y-4 p-4">
+    <div className="flex flex-col h-[300px] max-w-2xl mx-auto border rounded-lg bg-background">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, i) => (
           <div
             key={i}
-            className={`p-3 rounded-lg ${
+            className={`p-4 rounded-lg ${
               message.role === 'user' 
                 ? 'bg-primary/10 ml-auto' 
                 : 'bg-muted'
-            } max-w-[80%]`}
+            } max-w-[80%] whitespace-pre-wrap`}
           >
             {message.content}
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border">
+      <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 p-2 rounded-md border border-border bg-background"
+            className="flex-1 p-2 rounded-md border bg-background"
             placeholder="Ask about payments, analytics, or rewards..."
             disabled={isLoading}
           />
