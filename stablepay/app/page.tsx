@@ -5,6 +5,7 @@ import AIChat from './components/AIChat';
 import ConnectWallet from './components/ConnectWallet';
 import PaymentQR from './components/PaymentQR';
 import WalletActivity from './components/WalletActivity';
+import Analytics from './components/Analytics';
 import { useState, useEffect } from 'react';
 import { getStats } from './lib/stats';
 
@@ -120,6 +121,9 @@ export default function Home() {
 
           {/* Wallet Activity Section */}
           <WalletActivity address={connectedAddress} />
+
+          {/* Analytics Section */}
+          <Analytics />
         </div>
       </main>
     </div>

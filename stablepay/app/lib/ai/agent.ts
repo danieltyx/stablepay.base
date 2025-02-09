@@ -15,7 +15,7 @@ export class PaymentAgent {
   constructor() {
     this.messages.push({
       role: 'assistant',
-      content: 'Hello! I can help you with payments, analytics, and NFT rewards. What would you like to do?'
+      content: 'Hello! I can help you with payments, analytics, and rewards. What would you like to do?'
     });
   }
 

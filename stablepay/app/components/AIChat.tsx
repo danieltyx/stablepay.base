@@ -15,7 +15,7 @@ export default function AIChat() {
   useEffect(() => {
     setMessages([{
       role: 'assistant',
-      content: 'Hello! I can help you with payments, analytics, and NFT rewards. What would you like to do?'
+      content: 'Hello! I can help you with payments, analytics, and rewards. What would you like to do?'
     }]);
   }, []);
 
@@ -80,7 +80,7 @@ export default function AIChat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 p-2 rounded-md border border-border bg-background"
-            placeholder="Ask about payments, analytics, or NFT rewards..."
+            placeholder="Ask about payments, analytics, or rewards..."
             disabled={isLoading}
           />
           <button 
