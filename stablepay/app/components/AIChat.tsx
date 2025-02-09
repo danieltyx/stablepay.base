@@ -16,7 +16,7 @@ export default function AIChat() {
   useEffect(() => {
     setMessages([{
       role: 'assistant',
-      content: 'Hello! I can help you with payments, analytics, and rewards using the Coinbase Developer Platform. What would you like to do?'
+      content: 'Hello! I am Stable Pay AI, I can help you with payments, analytics, and rewards. What would you like to do?'
     }]);
   }, []);
 
